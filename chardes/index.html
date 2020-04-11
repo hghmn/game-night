@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Charades!</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/normalize.css@8.0.1/normalize.css">
+    <style type="text/css">
+        body { font-family: sans-serif; }
+        div, section { box-sizing: border-box; }
+
+        /* DEBUG */
+        /** { border: 1px solid black; }*/
+
+        hr {
+            border: none;
+            border-bottom: 2px solid black;
+        }
+
+        .ttu { text-transform: uppercase; }
+
+        .container {
+            padding: 1rem 1rem;
+            width: 100%;
+            max-width: 20rem;
+            margin: 0 auto;
+        }
+
+        .heading {
+            font-size: 1.5em;
+            margin-top: 0;
+        }
+
+        .card {
+            display: table;
+            margin: 0 auto;
+            width: 100%; /* 18rem; */
+            height: 16rem;
+            /*padding: 1em;*/
+            border: 2px solid black;
+            border-radius: 1rem;
+            overflow: hidden;
+            text-align: center;
+            position: relative;
+        }
+
+        .card:after {
+            top: 0;
+            text-align: left;
+            font-size: 2em;
+            text-transform: uppercase;
+            font-weight: 600;
+            padding: 1em;
+            content: 'hidden';
+            position: absolute;
+            display: block;
+            width: 100%;
+            height: 100%;
+            color: rgba(255, 255, 255, 0);
+            background-color: rgba(0,0,0,0);
+            transition: background-color 0.5s, color 0.3s;;
+        }
+
+        .card.hide{
+            background-color: #000;
+        }
+
+        .card > img {
+            height: 100%;
+            width: 100%;
+            object-fit: cover;
+        }
+
+        .card-text {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .card .card-spy {
+            position: absolute;
+            top: 45%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .button-group {
+            width: 100%;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .button {
+            /* reset */
+            -webkit-appearance: none;
+            padding: 1rem;
+            background: #FFF;
+            border: 2px solid black;
+            border-radius: 0.125rem;
+            font-weight: 600;
+            /*margin-right: 0.25rem;*/
+        }
+
+        .button:disabled {
+            border-color: #CCC;
+        }
+
+        .list-button {
+            border: 2px solid black;
+            padding: 0.5rem 1rem;
+            margin-bottom: 0.125rem;
+            border-radius: 0.125rem;
+        }
+    </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+import { h, app } from 'https://unpkg.com/hyperapp@2.0.4/src/index.js?module'
+import htm from 'https://unpkg.com/htm@3.0.3/dist/htm.module.js?module'
+const html = htm.bind(h)
+
+const pickCard = (categories, id) => {
+    let cat = categories.find(c => c.id === id)
+    let r = Math.floor(Math.random() * cat.questions.length)
+    return cat.questions[r]
+}
+
+const SetState = (state, { key, value }) => ({ ...state, [key]: value })
+const SelectCategory = (state, { id, name }) => ({
+    ...state,
+    categoryId: id,
+    categoryName: name,
+})
+const ClearCategory = (state) => ({
+    ...state,
+    categoryId: null,
+    categoryName: null,
+    card: null,
+    show: false,
+})
+
+const ShowCard = (state) => {
+    let { card, show } = state;
+
+    if (!card) {
+        card = pickCard(state.categories, state.categoryId)
+        show = true;
+    } else {
+        show = !show;
+    }
+
+    return {
+        ...state,
+        card,
+        show,
+    }
+}
+
+const NextCard = (state) => ({
+    ...state,
+    card: pickCard(state.categories, state.categoryId)
+})
+
+const CategoryList = ({ categories = [] }) => {
+    let items = []
+    for (let c of categories) {
+        items.push(html`<div onClick=${[SelectCategory, c]} class="list-button">${c.name}</div>`)
+    }
+
+    return html`
+        <div>
+            <h1 class="heading">Charades!</h1>
+
+            <h2>Select Category:</h2>
+            ${items}
+        </div>
+    `
+}
+
+const WordCard = (state) => html`
+<div>
+    <a onClick=${ClearCategory}>← Back to Category List</a>
+    <h2>Category: ${state.categoryName}</h2>
+
+    <div class=${'card ' + (state.show ? '' : 'hide')}>
+        <span class="card-text">${state.card}</span>
+    </div>
+
+    <div class="button-group">
+        <button class="button skip" onClick="${ShowCard}">${state.show ? 'Hide Card' : 'Show Card'}</button>
+        <button class="button next" onClick="${NextCard}">Next Card</button>
+    </div>
+
+</div>
+`
+
+const View = (state) => html`
+<section class="container" key="game">
+    ${state.categoryId ? WordCard(state) : CategoryList(state) }
+</section>
+`
+
+const PreloadData = async (dispatch) => {
+    let resp = await fetch('categories.json')
+    let categories = await resp.json()
+
+    dispatch(SetState, { key: 'categories', value: categories })
+}
+
+const initState = {
+    // category: null,
+}
+
+app({
+    node: document.getElementById('app'),
+    init: [
+        initState,
+        [PreloadData],
+    ],
+    view: View,
+})
+
+</script>
+</body>
+</html>
