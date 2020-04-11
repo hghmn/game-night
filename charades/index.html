@@ -204,7 +204,7 @@ const View = (state) => html`
 `
 
 const PreloadData = async (dispatch) => {
-    let resp = await fetch('categories.json')
+    let resp = await fetch('/charades/categories.json')
     let categories = await resp.json()
 
     dispatch(SetState, { key: 'categories', value: categories })
